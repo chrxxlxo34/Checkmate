@@ -1,0 +1,93 @@
+name: Android Build, Emulator Smoke Test, and Release
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: checkmate-\${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build Checkmate Android APK (Unity 6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build Android APK
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: \${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: \${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: \${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          unityVersion: 6000.0.40f1
+          buildMethod: Checkmate.CheckmateBuild.BuildAndroid
+          allowDirtyBuild: true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Checkmate-Android-APK
+          path: Builds/Android/Checkmate.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  emulator-smoke-test:
+    name: Install and launch APK in Android emulator
+    needs: build-apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Checkmate-Android-APK
+          path: Builds/Android
+
+      - name: Boot emulator, install APK, and verify process starts
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            test -s Builds/Android/Checkmate.apk
+            adb install -r Builds/Android/Checkmate.apk
+            adb shell am force-stop com.checkmate.chess
+            adb shell monkey -p com.checkmate.chess -c android.intent.category.LAUNCHER 1
+            sleep 20
+            adb shell pidof com.checkmate.chess
+
+  publish-release:
+    name: Publish versioned APK release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: emulator-smoke-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download tested APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Checkmate-Android-APK
+          path: Builds/Android
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Checkmate \${{ github.ref_name }}
+          generate_release_notes: true
+          files: Builds/Android/Checkmate.apk
