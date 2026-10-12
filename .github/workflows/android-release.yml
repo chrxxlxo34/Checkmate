@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: checkmate-\${{ github.ref }}
+  group: checkmate-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,9 +25,9 @@ jobs:
       - name: Build Android APK
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: \${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: \${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: \${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           targetPlatform: Android
           unityVersion: 6000.0.40f1
@@ -88,6 +88,6 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: Checkmate \${{ github.ref_name }}
+          name: Checkmate ${{ github.ref_name }}
           generate_release_notes: true
           files: Builds/Android/Checkmate.apk
