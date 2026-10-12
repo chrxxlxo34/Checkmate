@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.fbx binary
+*.blend binary
+*.wav binary
+*.mp3 binary
+*.mp4 binary
+*.apk binary
